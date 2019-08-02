@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -68,7 +69,7 @@ func handleRemindMe(bot *tb.Bot) func(*tb.Message) {
 
 func main() {
 	b, err := tb.NewBot(tb.Settings{
-		Token:  "924277854:AAGxgIqOcpC1eIzlZQgHS7ADTtRkDzWC0G8",
+		Token:  os.Getenv("TELEGRAM_BOT_TOKEN"),
 		Poller: &tb.LongPoller{Timeout: 1 * time.Second},
 	})
 
