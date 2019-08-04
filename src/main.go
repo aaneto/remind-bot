@@ -44,23 +44,23 @@ func handleRemindMe(bot *tb.Bot) func(*tb.Message) {
 
 		if err != nil {
 			errorMessage := fmt.Sprintf(
-				"Could not parse duration %v: %v",
-				remindMsg.time,
-				err)
-
-			log.Printf("Sending to Bot %v: %v", message.Sender, errorMessage)
+				"Could not parse time for message \"%v\"",
+				messageContent)
+			log.Printf("Error parsing message %v: %v", messageContent, err.Error())
+			log.Printf("Sending %v to %v", errorMessage, message.Sender)
 			bot.Send(
 				message.Sender,
 				errorMessage)
+			return
 		}
 
-		log.Printf("Scheduled to Send to Bot %v: %v", message.Sender, remindMsg)
+		log.Printf("Scheduled sending %v to %v", remindMsg, message.Sender)
 		duration := time.Until(remindMsg.time)
 
 		timer1 := time.NewTimer(duration)
 		<-timer1.C
 
-		log.Printf("Sending to Bot %v: %v", message.Sender, remindMsg.content)
+		log.Printf("Sending %v to %v", remindMsg.content, message.Sender)
 		bot.Send(
 			message.Sender,
 			remindMsg.content)
