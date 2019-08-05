@@ -12,10 +12,6 @@ import (
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
-var sentTime time.Time
-var sentMessage string
-var receivedTime time.Time
-
 var mockGetMe = `
 {
 	"ok": true,
@@ -101,7 +97,7 @@ func TestInvalidCommandHandle(t *testing.T) {
 
 	bot, _ := tb.NewBot(tb.Settings{
 		Token:  "DUMMY TOKEN",
-		URL:    server.URL,
+		URL:    server.getURL(),
 		Poller: &tb.LongPoller{Timeout: 1 * time.Second},
 	})
 
@@ -114,8 +110,11 @@ func TestInvalidCommandHandle(t *testing.T) {
 
 	bot.Start()
 
-	if expectedMessage != sentMessage {
-		t.Errorf("Wrong message received, expected %#v got %#v", expectedMessage, sentMessage)
+	if expectedMessage != *server.sentMessage {
+		t.Errorf(
+			"Wrong message received, expected %#v got %#v",
+			expectedMessage,
+			server.sentMessage)
 	}
 }
 
@@ -129,7 +128,7 @@ func TestCommandHandle(t *testing.T) {
 
 	bot, _ := tb.NewBot(tb.Settings{
 		Token:  "DUMMY TOKEN",
-		URL:    server.URL,
+		URL:    server.getURL(),
 		Poller: &tb.LongPoller{Timeout: 1 * time.Second},
 	})
 
@@ -140,16 +139,31 @@ func TestCommandHandle(t *testing.T) {
 	go stopBotAfterDuration(acceptedDelay, bot)
 	bot.Start()
 
-	expectedArrivalTime := receivedTime.Add(messageDelay)
+	expectedArrivalTime := server.receivedMessageTime.Add(messageDelay)
 
-	if !timeAlmostEqual(sentTime, expectedArrivalTime, acceptedDelay) {
+	if !timeAlmostEqual(*server.sentMessageTime, expectedArrivalTime, acceptedDelay) {
 		t.Error("Parsed time was not respected.")
 	}
 
-	if expectedMessage != sentMessage {
-		t.Errorf("Wrong message received, expected %#v got %#v", expectedMessage, sentMessage)
+	if expectedMessage != *server.sentMessage {
+		t.Errorf("Wrong message received, expected %#v got %#v", expectedMessage, server.sentMessage)
 	}
 
+}
+
+type testServerData struct {
+	sentMessage         *string
+	receivedMessageTime *time.Time
+	sentMessageTime     *time.Time
+	server              *httptest.Server
+}
+
+func (serverData testServerData) Close() {
+	serverData.server.Close()
+}
+
+func (serverData testServerData) getURL() string {
+	return serverData.server.URL
 }
 
 func newMessage(text string) string {
@@ -170,9 +184,12 @@ func timeAlmostEqual(lhand time.Time, rhand time.Time, tolerance time.Duration) 
 	return withinTolerance
 }
 
-func startFakeServer(responseMessage string) *httptest.Server {
+func startFakeServer(responseMessage string) testServerData {
 	nonce := 1
 	msgReceived := false
+	var sentTime = new(time.Time)
+	var receivedTime = new(time.Time)
+	var sentMessage = new(string)
 
 	ts := httptest.NewServer(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -187,15 +204,19 @@ func startFakeServer(responseMessage string) *httptest.Server {
 				}
 
 			case strings.HasSuffix(r.URL.Path, "sendMessage"):
-				sentTime = time.Now()
+				*sentTime = time.Now()
 
 				buffer, _ := ioutil.ReadAll(r.Body)
-				sentMessage = string(buffer)
+				*sentMessage = string(buffer)
 				r.Body.Close()
+
+				messageResponse := fmt.Sprintf(`{"ok": true, "result": %v}`, *sentMessage)
+				w.Write([]byte(messageResponse))
+
 			case strings.HasSuffix(r.URL.Path, "getUpdates"):
 				w.Header().Add("Content-Type", "application/json")
 				if !msgReceived {
-					receivedTime = time.Now()
+					*receivedTime = time.Now()
 					updateString := fmt.Sprintf(mockUpdate, nonce, nonce, responseMessage)
 					responseString := fmt.Sprintf(mockGetUpdates, updateString)
 					_, err := w.Write([]byte(responseString))
@@ -215,7 +236,11 @@ func startFakeServer(responseMessage string) *httptest.Server {
 			}
 		}))
 
-	return ts
+	return testServerData{
+		server:              ts,
+		sentMessageTime:     sentTime,
+		sentMessage:         sentMessage,
+		receivedMessageTime: receivedTime}
 }
 
 func stopBotAfterDuration(duration time.Duration, bot *tb.Bot) {
