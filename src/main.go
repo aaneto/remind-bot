@@ -11,13 +11,55 @@ import (
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
-type remindMessage struct {
-	time    time.Time
-	content string
+func main() {
+	b, err := tb.NewBot(tb.Settings{
+		Token:  os.Getenv("TELEGRAM_BOT_TOKEN"),
+		Poller: &tb.LongPoller{Timeout: 1 * time.Second},
+	})
+
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	b.Handle("/remind", handleRemindMe(b))
+	b.Start()
 }
 
-func (remindMsg *remindMessage) String() string {
-	return fmt.Sprintf("%v at %v", remindMsg.content, remindMsg.time)
+func handleRemindMe(bot *tb.Bot) func(*tb.Message) {
+	return func(message *tb.Message) {
+		messageContent := strings.TrimSpace(message.Text[len("/remind"):])
+		remindMsg, err := decodeReminderMessage(messageContent)
+
+		if err != nil {
+			errorMessage := fmt.Sprintf(
+				"Could not parse time for message \"%v\"",
+				messageContent)
+			log.Printf("Error parsing message %v: %v", messageContent, err.Error())
+
+			trySendMessage(bot, message.Sender, errorMessage)
+			return
+		}
+
+		log.Printf("Scheduled sending %v to %v", remindMsg, message.Sender)
+		duration := time.Until(remindMsg.time)
+
+		timer1 := time.NewTimer(duration)
+		<-timer1.C
+
+		trySendMessage(bot, message.Sender, remindMsg.content)
+	}
+}
+
+func trySendMessage(bot *tb.Bot, sender *tb.User, message string) {
+	log.Printf("Sending %v to %v", message, sender)
+	msg, err := bot.Send(sender, message)
+
+	if err != nil {
+		log.Printf("Failed to send message %v.", message)
+	}
+
+	log.Printf("Message %v sent", msg)
 }
 
 func decodeReminderMessage(message string) (*remindMessage, error) {
@@ -37,47 +79,11 @@ func decodeReminderMessage(message string) (*remindMessage, error) {
 	return &remindMsg, nil
 }
 
-func handleRemindMe(bot *tb.Bot) func(*tb.Message) {
-	return func(message *tb.Message) {
-		messageContent := strings.TrimSpace(message.Text[len("/remind"):])
-		remindMsg, err := decodeReminderMessage(messageContent)
-
-		if err != nil {
-			errorMessage := fmt.Sprintf(
-				"Could not parse time for message \"%v\"",
-				messageContent)
-			log.Printf("Error parsing message %v: %v", messageContent, err.Error())
-			log.Printf("Sending %v to %v", errorMessage, message.Sender)
-			bot.Send(
-				message.Sender,
-				errorMessage)
-			return
-		}
-
-		log.Printf("Scheduled sending %v to %v", remindMsg, message.Sender)
-		duration := time.Until(remindMsg.time)
-
-		timer1 := time.NewTimer(duration)
-		<-timer1.C
-
-		log.Printf("Sending %v to %v", remindMsg.content, message.Sender)
-		bot.Send(
-			message.Sender,
-			remindMsg.content)
-	}
+type remindMessage struct {
+	time    time.Time
+	content string
 }
 
-func main() {
-	b, err := tb.NewBot(tb.Settings{
-		Token:  os.Getenv("TELEGRAM_BOT_TOKEN"),
-		Poller: &tb.LongPoller{Timeout: 1 * time.Second},
-	})
-
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-
-	b.Handle("/remind", handleRemindMe(b))
-	b.Start()
+func (remindMsg *remindMessage) String() string {
+	return fmt.Sprintf("%v at %v", remindMsg.content, remindMsg.time)
 }
