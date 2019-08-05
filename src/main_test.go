@@ -211,7 +211,11 @@ func startFakeServer(responseMessage string) testServerData {
 				r.Body.Close()
 
 				messageResponse := fmt.Sprintf(`{"ok": true, "result": %v}`, *sentMessage)
-				w.Write([]byte(messageResponse))
+				_, err := w.Write([]byte(messageResponse))
+
+				if err != nil {
+					panic("Could not write messageResponse bytes!")
+				}
 
 			case strings.HasSuffix(r.URL.Path, "getUpdates"):
 				w.Header().Add("Content-Type", "application/json")
