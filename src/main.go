@@ -52,14 +52,14 @@ func handleRemindMe(bot *tb.Bot) func(*tb.Message) {
 }
 
 func trySendMessage(bot *tb.Bot, sender *tb.User, message string) {
-	log.Printf("Sending %v to %v", message, sender)
+	log.Printf("Sending \"%v\" to \"%v\"", message, sender.ID)
 	msg, err := bot.Send(sender, message)
 
 	if err != nil {
-		log.Printf("Failed to send message %v.", message)
+		log.Printf("Failed to send message \"%v\" to \"%v\".", message, sender.ID)
 	}
 
-	log.Printf("Message %v sent", msg)
+	log.Printf("Message \"%v\" sent to \"%v\"", msg.Text, sender.ID)
 }
 
 func decodeReminderMessage(message string) (*remindMessage, error) {
