@@ -80,11 +80,12 @@ func TestInvalidCommandParsing(t *testing.T) {
 }
 
 func TestRemindMessageStringer(t *testing.T) {
-	remindMsg := remindMessage{time: time.Unix(0, 0), content: "My Custom Message"}
-	expectedMessage := "My Custom Message at 1969-12-31 22:00:00 -0200 -02"
+	utc, _ := time.LoadLocation("UTC")
+	remindMsg := remindMessage{time: time.Unix(0, 0).In(utc), content: "My Custom Message"}
+	expectedMessage := "My Custom Message at 1970-01-01 00:00:00 +0000 UTC"
 
 	if remindMsg.String() != expectedMessage {
-		t.Errorf("remindMsg String() should be equal to: %v", expectedMessage)
+		t.Errorf("remindMsg String() should be equal to: %v, got %v instead", expectedMessage, remindMsg.String())
 	}
 }
 
