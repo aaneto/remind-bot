@@ -47,7 +47,8 @@ var mockUpdate = `
 `
 
 func TestCommandParsing(t *testing.T) {
-	now := time.Now()
+	utc, _ := time.LoadLocation("UTC")
+	now := time.Now().In(utc)
 
 	expectedDurationMillis := 50
 	expectedDuration := time.Duration(expectedDurationMillis) * time.Millisecond
@@ -191,6 +192,7 @@ func startFakeServer(responseMessage string) testServerData {
 	var sentTime = new(time.Time)
 	var receivedTime = new(time.Time)
 	var sentMessage = new(string)
+	utc, _ := time.LoadLocation("UTC")
 
 	ts := httptest.NewServer(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -205,7 +207,7 @@ func startFakeServer(responseMessage string) testServerData {
 				}
 
 			case strings.HasSuffix(r.URL.Path, "sendMessage"):
-				*sentTime = time.Now()
+				*sentTime = time.Now().In(utc)
 
 				buffer, _ := ioutil.ReadAll(r.Body)
 				*sentMessage = string(buffer)
@@ -221,7 +223,7 @@ func startFakeServer(responseMessage string) testServerData {
 			case strings.HasSuffix(r.URL.Path, "getUpdates"):
 				w.Header().Add("Content-Type", "application/json")
 				if !msgReceived {
-					*receivedTime = time.Now()
+					*receivedTime = time.Now().In(utc)
 					updateString := fmt.Sprintf(mockUpdate, nonce, nonce, responseMessage)
 					responseString := fmt.Sprintf(mockGetUpdates, updateString)
 					_, err := w.Write([]byte(responseString))
