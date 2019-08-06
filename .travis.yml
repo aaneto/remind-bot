@@ -6,6 +6,9 @@ git:
 notifications:
   email: false
 
+services:
+  - docker
+
 before_script:
   - curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s v1.17.1
 script:
@@ -18,10 +21,4 @@ deploy:
   on:
     tags: true
   provider: script
-  script:
-    - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-    - docker build -t remind-bot .
-    - docker tag remind-bot adilsinho/remind-bot:latest
-    - docker tag adilsinho/remind-bot:$TRAVIS_TAG
-    - docker push adilsinho/remind-bot:latest
-    - docker push adilsinho/remind-bot:$TRAVIS_TAG
+  script: bash ci/deploy_images.sh
