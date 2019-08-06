@@ -1,6 +1,9 @@
 # Remind Bot
 A telegram bot for message reminding.
 
+[![Build Status](https://travis-ci.org/aaneto/remind-bot.svg?branch=master)](https://travis-ci.org/aaneto/remind-bot)
+[![Go Report Card](https://goreportcard.com/badge/github.com/aaneto/remind-bot)](https://goreportcard.com/report/github.com/aaneto/remind-bot)
+
 ## Running
 
 ```bash
